@@ -15,54 +15,90 @@
 import simpy
 #Nos permite generar cualquier cantidad de numeros aleatorios entre un rango especificado
 import random
+#Nos permitirá el calculo de la desciacion estandar
+import statistics
 
-#Definicion de la funcion proceso, que es la que maneja casi en totalidad la 
+#Definicion de la funcion proceso, que es la que maneja casi en totalidad la simulacion requerida
 def proceso(nombre, env, memoria, cpu, llegada, cantidad_instrucciones, cantidad_ram):
+    
+    #Tiempos para la desciacion estandar
+    global tiempos
+    tiempos = []
 
-    # Simula la espera de llegada del proceso
+    # Llega un nuevo proceso a la ram
     yield env.timeout(llegada)
 
-    #grabo el tiempo de llegada
+    #Variable que guarda el tiempo de llegada
     tiempo_llegada = env.now
 
-    print('%s proceso en cola [NEW llegada] -> %d cantidad ram requerida %d, disponible %d' % (nombre, env.now, cantidad_ram, memoria.level))
-    yield memoria.get(cantidad_ram)  #Pide la memoria que necesita o espera automaticamente hasta que haya suficiente
+    #Imprime un mensaje en el que se indica que un nuevo proceso se a añadido a la cola
+    print('%s Nuevo proceso: %d Ram reuqerida = %d, Ram disponible = %d' % (nombre, env.now, cantidad_ram, memoria.level))
+    
+    #Solicita la cantidad de memoria necesaria para poder llevar el proceso a cabo, sino hay suficiente se queda en la cola
+    yield memoria.get(cantidad_ram)
 
-    while cantidad_instrucciones > 0:  #repite hasta que se acabe la cantidad de instrucciones pendientes
-        # Ya tiene memoria para iniciar
-        print('%s proceso en cola READY tiempo -> %d cantidad instrucciones pendientes %d' % (nombre, env.now, cantidad_instrucciones))
+    #Ciclo que se repite las veces necesarios para terminar todos los procesos
+    while cantidad_instrucciones > 0:
+        
+        #Cuando detecta que ya hay suficiente memoria para continuar los procesos se ejecuta
+        print('%s Proceso en cola, tiempo = %d instrucciones por ejecutar = %d' % (nombre, env.now, cantidad_instrucciones))
 
-        with cpu.request() as req:  #pide el procesador
+        #Solicitud del CPU
+        with cpu.request() as req:
             yield req
 
+            #Simulacion del control de procesos del reloj del procesador
             cantidad_instrucciones = cantidad_instrucciones - 3
-            yield env.timeout(1) #Simula un ciclo de reloj del procesador
+            yield env.timeout(1)
 
             # Ya tiene procesador
-            print('%s proceso en estado RUNNING fue atendido en tiempo -> %d cantidad ram %d, Instrucciones pendientes %d ram disponible %d' % (nombre, env.now, cantidad_ram, cantidad_instrucciones, memoria.level))
+            print('%s Proceso ejecutandose en = %d Ram usandose = %d, Instrucciones por ejecutar = %d Ram sin uso = %d' % (nombre, env.now, cantidad_ram, cantidad_instrucciones, memoria.level))
 
     # Cuando ya finaliza devuelve la memoria utilizada
     yield memoria.put(cantidad_ram)
 
-    print('%s proceso TERMINATED salida -> %d cantidad ram devuelta %d, nueva cantidad de memoria disponible %d' % (nombre, env.now, cantidad_ram, memoria.level))
+    #Se ejecuta cuando un proceso es terminado y una cantidad de ram es devuelta
+    print('%s PROCESO EJECUTADO %d , Ram que deja sin uso = %d, Cantidad de memoria total sin uso = %d' % (nombre, env.now, cantidad_ram, memoria.level))
     global tiempo_total
+    tiempos.append(env.now - tiempo_llegada)
     tiempo_total += env.now - tiempo_llegada
-    print('Tiempo total %d' % (env.now - tiempo_llegada))
+    print('Tiempo total = %d' % (env.now - tiempo_llegada))
 
 
 random.seed(10)
-env = simpy.Environment()  # crear ambiente de simulacion
-initial_ram = simpy.Container(env, 30, init=30)  # crea el container de la ram
-initial_cpu = simpy.Resource(env, capacity=10)  # se crea el procesador con capacidad establecida
-initial_procesos = 25  # cantidad de procesos a generar
+
+# Se crea la simulación
+env = simpy.Environment()
+
+# Se crea la ram
+initial_ram = simpy.Container(env, 30, init=30)
+
+# se crea el procesador con capacidad establecida
+initial_cpu = simpy.Resource(env, capacity=10)
+
+#Numero de procesos a ejecutar
+initial_procesos = 25
+
+#Tiempo total igual a 0
 tiempo_total = 0
 
 for i in range(initial_procesos):
-    llegada = 0 #Todos los procesos llegan al mismo tiempo
-    cantidad_instrucciones = random.randint(1, 10)  # cantidad de operaciones por proceso
-    UsoRam = random.randint(1, 10)  # cantidad de ram que requiere cada proceso
-    env.process(proceso('proceso %d' % i, env, initial_ram, initial_cpu, llegada, cantidad_instrucciones, UsoRam))
+    #Todos los procesos llegan al mismo tiempo
+    llegada = 0
+    # cantidad de operaciones por proceso
+    cantidad_instrucciones = random.randint(1, 10)
+     # cantidad de ram que requiere cada proceso
+    UsoRam = random.randint(1, 10)
+    env.process(proceso('Proceso numero = %d |' % i, env, initial_ram, initial_cpu, llegada, cantidad_instrucciones, UsoRam))
 
 # correr la simulacion
 env.run()
-print('tiempo promedio %d ' % (tiempo_total / initial_procesos))
+print('tiempo promedio = %d ' % (tiempo_total / initial_procesos))
+
+#Desviacion estandar
+st_dev = statistics.pstdev(tiempos)
+print("Desviacion estandar = " + str(st_dev))
+
+
+
+
