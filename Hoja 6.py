@@ -74,7 +74,7 @@ env = simpy.Environment()
 initial_ram = simpy.Container(env, 30, init=30)
 
 # se crea el procesador con capacidad establecida
-initial_cpu = simpy.Resource(env, capacity=10)
+initial_cpu = simpy.Resource(env, capacity=60)
 
 #Numero de procesos a ejecutar
 initial_procesos = 25
@@ -86,8 +86,8 @@ for i in range(initial_procesos):
     #Todos los procesos llegan al mismo tiempo
     llegada = 0
     # cantidad de operaciones por proceso
-    cantidad_instrucciones = random.randint(1, 10)
-     # cantidad de ram que requiere cada proceso
+    cantidad_instrucciones = 5
+    # cantidad de ram que requiere cada proceso
     UsoRam = random.randint(1, 10)
     env.process(proceso('Proceso numero = %d |' % i, env, initial_ram, initial_cpu, llegada, cantidad_instrucciones, UsoRam))
 
